@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Comments Sentiment Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Comments Sentiment Analyzer</h1>
+        <form id="analyzeForm">
+            <label for="api_key">YouTube Data API Key:</label>
+            <input type="text" id="api_key" name="api_key" required>
+            <label for="video_id">YouTube Video ID:</label>
+            <input type="text" id="video_id" name="video_id" required>
+            <button type="submit">Analyze</button>
+        </form>
+        <div id="result">
+            <h2>Sentiment Analysis Results</h2>
+            <img id="sentimentPlot" src="" alt="Sentiment Analysis Plot" style="display: none;">
+            <div id="themes"></div>
+            <div id="comments"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('analyzeForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent form submission
+            const formData = new FormData(event.target);
+
+            // Clear previous results
+            document.getElementById('sentimentPlot').src = '';
+            document.getElementById('sentimentPlot').style.display = 'none';
+            document.getElementById('themes').innerHTML = '';
+            document.getElementById('comments').innerHTML = '';
+
+            // Fetch data from backend
+            fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error); // Handle backend errors
+                    return;
+                }
+
+                // Debug: Log the Base64 chart data length
+                console.log("Chart data length: ", data.chart.length);
+
+                // Display the pie chart
+                const chartImage = document.getElementById('sentimentPlot');
+                chartImage.src = 'data:image/png;base64,' + data.chart;
+                chartImage.style.display = 'block';
+
+                // Display themes
+                const themesDiv = document.getElementById('themes');
+                const themeCounts = data.themes;
+                let themesHtml = '<h3>Detected Themes:</h3><ul>';
+                for (const [theme, count] of Object.entries(themeCounts)) {
+                    themesHtml += `<li>${theme}: ${count} comments</li>`;
+                }
+                themesHtml += '</ul>';
+                themesDiv.innerHTML = themesHtml;
+
+                // Display labeled comments
+                const commentsDiv = document.getElementById('comments');
+                const labeledComments = data.comments;
+                let commentsHtml = '<h3>Comments with Sentiments:</h3><ul>';
+                labeledComments.forEach(comment => {
+                    commentsHtml += `<li><strong>Comment:</strong> ${comment.comment} <br> <strong>Sentiment:</strong> ${comment.sentiment} <br> <strong>Themes:</strong> ${comment.themes.join(', ')}</li>`;
+                });
+                commentsHtml += '</ul>';
+                commentsDiv.innerHTML = commentsHtml;
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
+
